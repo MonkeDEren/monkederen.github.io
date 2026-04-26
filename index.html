@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Permutation Generator</title>
+<style>
+    body {
+        background: #0f0f1a;
+        color: white;
+        font-family: Arial, sans-serif;
+        padding: 20px;
+    }
+    h1 {
+        color: #aaccff;
+    }
+    input, select, button {
+        width: 100%;
+        padding: 10px;
+        margin: 8px 0;
+        background: #222;
+        color: white;
+        border: 1px solid #555;
+        border-radius: 5px;
+    }
+    button {
+        background: #3a6df0;
+        cursor: pointer;
+        font-weight: bold;
+    }
+    button:hover {
+        background: #5a8fff;
+    }
+    .fixed-box {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .fixed-box input {
+        flex: 1;
+    }
+    #results {
+        white-space: pre-wrap;
+        margin-top: 20px;
+        padding: 10px;
+        background: #111;
+        border: 1px solid #333;
+        min-height: 100px;
+    }
+</style>
+</head>
+<body>
+
+<h1>🔡 N‑Letter Fixed Permutation Generator</h1>
+
+<input id="word" placeholder="Enter word (e.g. renal)">
+<input id="length" placeholder="Word length (e.g. 4)" type="number">
+
+<label>Select number of fixed letters:</label>
+<select id="fixedCount" onchange="renderFixedInputs()">
+    <option>1 Letter Fixed</option>
+    <option>2 Letters Fixed</option>
+    <option>3 Letters Fixed</option>
+    <option>4 Letters Fixed</option>
+    <option>5 Letters Fixed</option>
+</select>
+
+<div id="fixedInputs"></div>
+
+<button onclick="generate()">✨ Generate Permutations</button>
+
+<h2>Results:</h2>
+<div id="results">Results will appear here.</div>
+
+<script>
+// Generate all permutations of a string
+function permute(str) {
+    if (str.length <= 1) return [str];
+    let result = [];
+    for (let i = 0; i < str.length; i++) {
+        let char = str[i];
+        let remaining = str.slice(0, i) + str.slice(i + 1);
+        for (let p of permute(remaining)) {
+            result.push(char + p);
+        }
+    }
+    return result;
+}
+
+// Render fixed letter input fields
+function renderFixedInputs() {
+    let count = parseInt(document.getElementById("fixedCount").value[0]);
+    let container = document.getElementById("fixedInputs");
+    container.innerHTML = "";
+
+    for (let i = 0; i < count; i++) {
+        container.innerHTML += `
+            <div class="fixed-box">
+                <input placeholder="Letter ${i+1}" class="letter">
+                <input placeholder="Position ${i+1}" class="position" type="number">
+            </div>
+        `;
+    }
+}
+
+// Main generator
+function generate() {
+    let word = document.getElementById("word").value.trim();
+    let reqLen = parseInt(document.getElementById("length").value.trim());
+    let letters = Array.from(document.getElementsByClassName("letter"));
+    let positions = Array.from(document.getElementsByClassName("position"));
+
+    let fixedData = [];
+    for (let i = 0; i < letters.length; i++) {
+        let letter = letters[i].value.trim();
+        let pos = parseInt(positions[i].value.trim());
+        if (letter && pos) {
+            fixedData.push([letter, pos]);
+        }
+    }
+
+    let perms = permute(word).filter(p => p.length === reqLen);
+
+    // Apply fixed constraints
+    let filtered = perms.filter(p =>
+        fixedData.every(([letter, pos]) => p[pos - 1] === letter)
+    );
+
+    document.getElementById("results").textContent =
+        filtered.length ? filtered.join("\n") : "No results found.";
+}
+
+// Initialize default inputs
+renderFixedInputs();
+</script>
+
+</body>
+</html>
