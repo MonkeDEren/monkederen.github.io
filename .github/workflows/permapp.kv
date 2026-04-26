@@ -1,0 +1,89 @@
+<MainWidget>:
+    orientation: "vertical"
+    padding: 15
+    spacing: 12
+
+    canvas.before:
+        Color:
+            rgba: 0.1, 0.1, 0.15, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    Label:
+        text: "N-Letter Fixed Permutation Generator"
+        font_size: "20sp"
+        bold: True
+        color: 0.9, 0.9, 1, 1
+        size_hint_y: None
+        height: self.texture_size[1] + 10
+
+    TextInput:
+        id: word_input
+        hint_text: "Enter word (e.g. renal)"
+        multiline: False
+        size_hint_y: None
+        height: 45
+        background_color: 0.2, 0.2, 0.3, 1
+        foreground_color: 1, 1, 1, 1
+
+    TextInput:
+        id: length_input
+        hint_text: "Word length (e.g. 4)"
+        multiline: False
+        input_filter: "int"
+        size_hint_y: None
+        height: 45
+        background_color: 0.2, 0.2, 0.3, 1
+        foreground_color: 1, 1, 1, 1
+
+    Label:
+        text: "Select number of fixed letters"
+        color: 1, 1, 1, 1
+        size_hint_y: None
+        height: 25
+
+    Spinner:
+        id: spinner
+        text: "1 Letter Fixed"
+        values: ["1 Letter Fixed", "2 Letters Fixed", "3 Letters Fixed", "4 Letters Fixed", "5 Letters Fixed"]
+        size_hint_y: None
+        height: 45
+        background_color: 0.3, 0.3, 0.5, 1
+        color: 1, 1, 1, 1
+
+    # Scrollable area for dynamic inputs
+    ScrollView:
+        size_hint_y: None
+        height: 150
+        do_scroll_x: False
+
+        BoxLayout:
+            id: fixed_input_area
+            orientation: "vertical"
+            spacing: 10
+            size_hint_y: None
+            height: self.minimum_height
+
+    Button:
+        text: "Generate Permutations"
+        size_hint_y: None
+        height: 50
+        background_color: 0.3, 0.5, 0.8, 1
+        color: 1, 1, 1, 1
+        bold: True
+        on_press: root.generate()
+
+    # Output section
+    ScrollView:
+        size_hint_y: 1
+        do_scroll_x: False
+
+        Label:
+            text: root.output_text
+            color: 1, 1, 1, 1
+            text_size: self.width, None
+            size_hint_y: None
+            height: self.texture_size[1] + 20
+            halign: "left"
+            valign: "top"
