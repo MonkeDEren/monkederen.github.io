@@ -1,92 +1,190 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Permutation Generator</title>
+<title>Permutation App</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
 <style>
+    :root {
+        --bg: #0f0f1a;
+        --text: #ffffff;
+        --card: #1a1a2e;
+        --accent: #4a90ff;
+    }
+    [data-theme="light"] {
+        --bg: #f5f5f5;
+        --text: #000000;
+        --card: #ffffff;
+        --accent: #0055ff;
+    }
+
     body {
-        background: #0f0f1a;
-        color: white;
+        background: var(--bg);
+        color: var(--text);
         font-family: Arial, sans-serif;
+        margin: 0;
         padding: 20px;
+        transition: background 0.3s, color 0.3s;
     }
+
+    .container {
+        max-width: 600px;
+        margin: auto;
+        padding: 20px;
+        background: var(--card);
+        border-radius: 12px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        animation: fadeIn 0.6s ease;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     h1 {
-        color: #aaccff;
+        text-align: center;
+        color: var(--accent);
     }
+
     input, select, button {
         width: 100%;
-        padding: 10px;
-        margin: 8px 0;
+        padding: 12px;
+        margin: 10px 0;
+        border-radius: 8px;
+        border: 1px solid #444;
         background: #222;
         color: white;
-        border: 1px solid #555;
-        border-radius: 5px;
+        transition: 0.3s;
     }
+
+    [data-theme="light"] input,
+    [data-theme="light"] select {
+        background: #eee;
+        color: black;
+    }
+
     button {
-        background: #3a6df0;
-        cursor: pointer;
+        background: var(--accent);
+        color: white;
         font-weight: bold;
+        cursor: pointer;
     }
+
     button:hover {
-        background: #5a8fff;
+        opacity: 0.9;
     }
+
     .fixed-box {
         display: flex;
         gap: 10px;
-        margin-bottom: 10px;
     }
-    .fixed-box input {
-        flex: 1;
-    }
+
     #results {
         white-space: pre-wrap;
-        margin-top: 20px;
-        padding: 10px;
         background: #111;
-        border: 1px solid #333;
-        min-height: 100px;
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 15px;
+        min-height: 120px;
+    }
+
+    .theme-toggle {
+        float: right;
+        cursor: pointer;
+        font-size: 14px;
+        color: var(--accent);
+    }
+
+    .logo {
+        text-align: center;
+        margin-bottom: 10px;
+        font-size: 22px;
+        font-weight: bold;
+        color: var(--accent);
+    }
+
+    .tutorial {
+        margin-top: 20px;
+        padding: 15px;
+        background: #222;
+        border-radius: 8px;
+    }
+
+    a.apk-btn {
+        display: block;
+        text-align: center;
+        background: var(--accent);
+        padding: 12px;
+        color: white;
+        border-radius: 8px;
+        margin-top: 15px;
+        text-decoration: none;
+        font-weight: bold;
     }
 </style>
 </head>
+
 <body>
 
-<h1>🔡 N‑Letter Fixed Permutation Generator</h1>
+<div class="theme-toggle" onclick="toggleTheme()">🌗 Toggle Theme</div>
 
-<input id="word" placeholder="Enter word (e.g. renal)">
-<input id="length" placeholder="Word length (e.g. 4)" type="number">
+<div class="container">
+    <div class="logo">🔡 Permutation App</div>
 
-<label>Select number of fixed letters:</label>
-<select id="fixedCount" onchange="renderFixedInputs()">
-    <option>1 Letter Fixed</option>
-    <option>2 Letters Fixed</option>
-    <option>3 Letters Fixed</option>
-    <option>4 Letters Fixed</option>
-    <option>5 Letters Fixed</option>
-</select>
+    <input id="word" placeholder="Enter word (e.g. renal)">
+    <input id="length" placeholder="Word length (e.g. 4)" type="number">
 
-<div id="fixedInputs"></div>
+    <label>Select number of fixed letters:</label>
+    <select id="fixedCount" onchange="renderFixedInputs()">
+        <option>1 Letter Fixed</option>
+        <option>2 Letters Fixed</option>
+        <option>3 Letters Fixed</option>
+        <option>4 Letters Fixed</option>
+        <option>5 Letters Fixed</option>
+    </select>
 
-<button onclick="generate()">✨ Generate Permutations</button>
+    <div id="fixedInputs"></div>
 
-<h2>Results:</h2>
-<div id="results">Results will appear here.</div>
+    <button onclick="generate()">✨ Generate Permutations</button>
+    <button onclick="downloadTXT()">📄 Download Results as TXT</button>
+
+    <h3>Results:</h3>
+    <div id="results">Results will appear here.</div>
+
+    <a class="apk-btn" href="PermutationApp-1.0-release.apk">⬇️ Download Android APK</a>
+
+    <div class="tutorial">
+        <h3>📘 How to Use</h3>
+        <p>1. Enter a word (e.g., <b>renal</b>)</p>
+        <p>2. Enter the desired permutation length</p>
+        <p>3. Choose how many letters are fixed</p>
+        <p>4. Enter each fixed letter and its position</p>
+        <p>5. Click <b>Generate</b> to see all valid permutations</p>
+    </div>
+</div>
 
 <script>
-// Generate all permutations of a string
+// Theme toggle
+function toggleTheme() {
+    document.body.dataset.theme =
+        document.body.dataset.theme === "light" ? "dark" : "light";
+}
+
+// Generate permutations
 function permute(str) {
     if (str.length <= 1) return [str];
     let result = [];
     for (let i = 0; i < str.length; i++) {
         let char = str[i];
         let remaining = str.slice(0, i) + str.slice(i + 1);
-        for (let p of permute(remaining)) {
-            result.push(char + p);
-        }
+        for (let p of permute(remaining)) result.push(char + p);
     }
     return result;
 }
 
-// Render fixed letter input fields
+// Render fixed inputs
 function renderFixedInputs() {
     let count = parseInt(document.getElementById("fixedCount").value[0]);
     let container = document.getElementById("fixedInputs");
@@ -102,25 +200,22 @@ function renderFixedInputs() {
     }
 }
 
-// Main generator
+// Generate results
 function generate() {
     let word = document.getElementById("word").value.trim();
     let reqLen = parseInt(document.getElementById("length").value.trim());
-    let letters = Array.from(document.getElementsByClassName("letter"));
-    let positions = Array.from(document.getElementsByClassName("position"));
+    let letters = [...document.getElementsByClassName("letter")];
+    let positions = [...document.getElementsByClassName("position")];
 
     let fixedData = [];
     for (let i = 0; i < letters.length; i++) {
         let letter = letters[i].value.trim();
         let pos = parseInt(positions[i].value.trim());
-        if (letter && pos) {
-            fixedData.push([letter, pos]);
-        }
+        if (letter && pos) fixedData.push([letter, pos]);
     }
 
     let perms = permute(word).filter(p => p.length === reqLen);
 
-    // Apply fixed constraints
     let filtered = perms.filter(p =>
         fixedData.every(([letter, pos]) => p[pos - 1] === letter)
     );
@@ -129,7 +224,16 @@ function generate() {
         filtered.length ? filtered.join("\n") : "No results found.";
 }
 
-// Initialize default inputs
+// Download results as TXT
+function downloadTXT() {
+    let text = document.getElementById("results").textContent;
+    let blob = new Blob([text], { type: "text/plain" });
+    let link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "permutations.txt";
+    link.click();
+}
+
 renderFixedInputs();
 </script>
 
