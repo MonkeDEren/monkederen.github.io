@@ -22,17 +22,12 @@ android.archs = arm64-v8a, armeabi-v7a
 
 android.permissions = INTERNET
 
-# Keep this ON so your KV file loads correctly
 presplash.filename = %(source.dir)s/presplash.png
 icon.filename = %(source.dir)s/icon.png
 
-# Prevent crashes due to missing SDL2 bootstrap
 android.enable_androidx = True
-
-# Avoid unnecessary heavy libraries
 android.allow_backup = True
 
-# Faster builds
 log_level = 2
 
 [buildozer]
