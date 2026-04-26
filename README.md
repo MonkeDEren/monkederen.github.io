@@ -38,7 +38,7 @@ No internet required.
 
 Use the app directly in your browser:
 
-👉 **https://yourusername.github.io**
+👉 **https://monkederen.github.io**
 
 No installation needed.
 
