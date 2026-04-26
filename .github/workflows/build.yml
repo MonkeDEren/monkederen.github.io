@@ -1,41 +1,40 @@
-name: Build APK
+name: Build Kivy APK
 
-on: [push]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v3
-
-      - name: Build with Buildozer
-        uses: digreatbrian/buildozer-action@v1
-        with:
-          command: buildozer android debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: apk
-          path: bin/*.apkname: Build APK
-
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v3
 
-      - name: Build with Buildozer
-        uses: digreatbrian/buildozer-action@v1
-        with:
-          command: buildozer android debug
+    - name: Set up cache for Buildozer global directory
+      uses: actions/cache@v3
+      with:
+        path: .buildozer_global
+        key: buildozer-global-${{ hashFiles('buildozer.spec') }}
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v3
-        with:
-          name: apk
-          path: bin/*.apk
+    - name: Set up cache for Buildozer local directory
+      uses: actions/cache@v3
+      with:
+        path: .buildozer
+        key: buildozer-local-${{ hashFiles('buildozer.spec') }}
+
+    - name: Build APK with Buildozer
+      uses: ArtemSBulgakov/buildozer-action@v1
+      id: buildozer
+      with:
+        command: buildozer android debug
+        buildozer_version: master
+
+    - name: Upload APK artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: apk
+        path: ${{ steps.buildozer.outputs.filename }}
