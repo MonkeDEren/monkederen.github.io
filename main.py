@@ -13,23 +13,25 @@ from kivy.uix.scrollview import ScrollView
 def load_dictionary():
     """Load a set of valid English words used to filter permutations.
 
-    Tries nltk's bundled 'words' corpus first (great coverage, one-time
-    download). Falls back to a local 'words.txt' file placed next to this
-    script (one word per line) so the app can still work fully offline
-    without nltk installed, e.g. for the APK build.
+    Tries nltk's bundled 'words' corpus first, but ONLY if it is already
+    downloaded/cached - we never trigger a network download here, since
+    that would block app startup (and fail outright on Android, which has
+    no internet access by default in this app). Falls back to a local
+    'words.txt' file placed next to this script (one word per line) so
+    the app works fully offline, which is what actually ships in the APK.
     """
     words = set()
 
     try:
         import nltk
+        from nltk.corpus import words as nltk_words
         try:
-            from nltk.corpus import words as nltk_words
             words = set(w.lower() for w in nltk_words.words())
         except LookupError:
-            # Corpus not downloaded yet - try fetching it once.
-            nltk.download("words")
-            from nltk.corpus import words as nltk_words
-            words = set(w.lower() for w in nltk_words.words())
+            # Corpus isn't cached locally - skip it silently instead of
+            # blocking on a network download. words.txt fallback below
+            # will be used instead.
+            pass
     except ImportError:
         pass
 
@@ -49,7 +51,7 @@ DICTIONARY = load_dictionary()
 
 
 def fixed_permutations(word, req_word_len, fixed_data):
-    """fixed_data = [(letter, index), ...]
+    """fixed_data = [(letter, index), ...] with 1-based index.
 
     Returns unique, genuine-word permutations only:
     - Duplicate letter arrangements (from repeated letters in `word`) are
@@ -58,7 +60,20 @@ def fixed_permutations(word, req_word_len, fixed_data):
     - If a dictionary was loaded, each candidate must also be a real word.
       If no dictionary could be loaded, this check is skipped (all unique,
       constraint-matching arrangements are returned instead).
+
+    Raises ValueError if a fixed position is out of range for the
+    requested word length, so the caller can show a clear error instead
+    of silently ignoring the constraint or crashing.
     """
+    for letter, idx in fixed_data:
+        if idx < 1 or idx > req_word_len:
+            raise ValueError(
+                f"Position {idx} is out of range - it must be between "
+                f"1 and {req_word_len}."
+            )
+        if len(letter) != 1:
+            raise ValueError(f"'{letter}' is not a single letter.")
+
     seen = set()
     result = []
 
@@ -69,7 +84,7 @@ def fixed_permutations(word, req_word_len, fixed_data):
         if key in seen:
             continue  # already produced this exact arrangement
 
-        if not all(p[idx - 1] == letter for letter, idx in fixed_data):
+        if not all(p[idx - 1].lower() == letter.lower() for letter, idx in fixed_data):
             continue
 
         if DICTIONARY and key not in DICTIONARY:
@@ -88,15 +103,13 @@ class MainWidget(BoxLayout):
         super().__init__(**kwargs)
         self.fixed_inputs = []
 
-        # FIXED: spinner must be accessed via ids
         self.ids.spinner.bind(text=self.update_fixed_inputs)
 
     def update_fixed_inputs(self, spinner, value):
-        # Clear old inputs
         self.ids.fixed_input_area.clear_widgets()
         self.fixed_inputs.clear()
 
-        count = int(value[0])  # '1 Letter Fixed' → 1
+        count = int(value[0])  # '1 Letter Fixed' -> 1
         for i in range(count):
             box = BoxLayout(spacing=10, size_hint_y=None, height=40)
 
@@ -110,6 +123,7 @@ class MainWidget(BoxLayout):
             index_in = TextInput(
                 hint_text=f"Position {i+1}",
                 multiline=False,
+                input_filter="int",
                 background_color=(0.2, 0.2, 0.3, 1),
                 foreground_color=(1, 1, 1, 1)
             )
@@ -122,13 +136,30 @@ class MainWidget(BoxLayout):
     def generate(self):
         try:
             word = self.ids.word_input.text.strip()
-            req_word_len = int(self.ids.length_input.text.strip())
+            if not word:
+                self.output_text = "Please enter a word."
+                return
+
+            length_text = self.ids.length_input.text.strip()
+            if not length_text:
+                self.output_text = "Please enter a word length."
+                return
+            req_word_len = int(length_text)
+
+            if req_word_len < 1 or req_word_len > len(word):
+                self.output_text = (
+                    f"Length must be between 1 and {len(word)} "
+                    f"(the length of '{word}')."
+                )
+                return
 
             fixed_data = []
             for letter_in, index_in in self.fixed_inputs:
                 letter = letter_in.text.strip()
-                index = int(index_in.text.strip())
-                fixed_data.append((letter, index))
+                index_text = index_in.text.strip()
+                if not letter or not index_text:
+                    continue  # skip blank rows instead of erroring
+                fixed_data.append((letter, int(index_text)))
 
             results = fixed_permutations(word, req_word_len, fixed_data)
 
@@ -138,13 +169,14 @@ class MainWidget(BoxLayout):
             else:
                 self.output_text = "\n".join(results) if results else "No genuine words found."
 
+        except ValueError as e:
+            self.output_text = f"Input error: {e}"
         except Exception as e:
             self.output_text = f"Error: {e}"
 
 
 class PermutationApp(App):
     def build(self):
-        # FIXED: explicitly load your KV file
         self.load_kv("permapp.kv")
         return MainWidget()
 
