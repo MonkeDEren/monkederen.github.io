@@ -1,0 +1,48 @@
+name: Generate Offline Dictionary
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install dictionary source
+        run: python -m pip install --disable-pip-version-check english-words==2.0.2
+
+      - name: Generate words.txt
+        run: |
+          python - <<'PY'
+          from english_words import get_english_words_set
+
+          words = get_english_words_set(["web2"], alpha=True, lower=True)
+          words = sorted(word for word in words if word.isalpha())
+
+          with open("words.txt", "w", encoding="utf-8", newline="\n") as f:
+              f.write("\n".join(words) + "\n")
+
+          print(f"Generated {len(words)} words")
+          PY
+
+      - name: Commit dictionary if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add words.txt
+          if git diff --cached --quiet; then
+            echo "words.txt is already up to date"
+          else
+            git commit -m "Add bundled offline English dictionary"
+            git push
+          fi
