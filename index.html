@@ -83,7 +83,9 @@
 
     #results {
         white-space: pre-wrap;
-        background: #111;
+        background: var(--card);
+        color: var(--text);
+        border: 1px solid var(--accent);
         padding: 15px;
         border-radius: 8px;
         margin-top: 15px;
@@ -108,7 +110,8 @@
     .tutorial {
         margin-top: 20px;
         padding: 15px;
-        background: #222;
+        background: var(--card);
+        border: 1px solid var(--accent);
         border-radius: 8px;
     }
 
@@ -172,15 +175,19 @@ function toggleTheme() {
         document.body.dataset.theme === "light" ? "dark" : "light";
 }
 
-// Generate permutations
-function permute(str) {
-    if (str.length <= 1) return [str];
+// Generate r-length permutations (partial permutations, matches Python's itertools.permutations(word, r))
+function permuteR(str, r) {
     let result = [];
-    for (let i = 0; i < str.length; i++) {
-        let char = str[i];
-        let remaining = str.slice(0, i) + str.slice(i + 1);
-        for (let p of permute(remaining)) result.push(char + p);
+    function helper(current, remaining) {
+        if (current.length === r) {
+            result.push(current);
+            return;
+        }
+        for (let i = 0; i < remaining.length; i++) {
+            helper(current + remaining[i], remaining.slice(0, i) + remaining.slice(i + 1));
+        }
     }
+    helper("", str);
     return result;
 }
 
@@ -207,6 +214,16 @@ function generate() {
     let letters = [...document.getElementsByClassName("letter")];
     let positions = [...document.getElementsByClassName("position")];
 
+    if (!word) {
+        document.getElementById("results").textContent = "Please enter a word.";
+        return;
+    }
+    if (!reqLen || reqLen < 1 || reqLen > word.length) {
+        document.getElementById("results").textContent =
+            `Please enter a valid length between 1 and ${word.length}.`;
+        return;
+    }
+
     let fixedData = [];
     for (let i = 0; i < letters.length; i++) {
         let letter = letters[i].value.trim();
@@ -214,7 +231,7 @@ function generate() {
         if (letter && pos) fixedData.push([letter, pos]);
     }
 
-    let perms = permute(word).filter(p => p.length === reqLen);
+    let perms = permuteR(word, reqLen);
 
     let filtered = perms.filter(p =>
         fixedData.every(([letter, pos]) => p[pos - 1] === letter)
