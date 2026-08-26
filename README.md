@@ -52,4 +52,4 @@ No installation needed.
 
 ### Install dependencies
 ```bash
-pip install kivy
+pip install -r requirements.txt
