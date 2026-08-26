@@ -154,9 +154,9 @@
     <button onclick="downloadTXT()">📄 Download Results as TXT</button>
 
     <h3>Results:</h3>
-    <div id="results">Results will appear here.</div>
+    <div id="results">Loading dictionary...</div>
 
-    <a class="apk-btn" href="PermutationApp-1.0-release.apk">⬇️ Download Android APK</a>
+    <a class="apk-btn" href="https://github.com/MonkeDEren/monkederen.github.io/releases/latest/download/PermutationApp-1.0-release.apk">⬇️ Download Android APK</a>
 
     <div class="tutorial">
         <h3>📘 How to Use</h3>
@@ -164,94 +164,181 @@
         <p>2. Enter the desired permutation length</p>
         <p>3. Choose how many letters are fixed</p>
         <p>4. Enter each fixed letter and its position</p>
-        <p>5. Click <b>Generate</b> to see all valid permutations</p>
+        <p>5. Click <b>Generate</b> to see all genuine words that match</p>
     </div>
 </div>
 
 <script>
+let dictionary = null;
+let dictionaryError = null;
+
+async function loadDictionary() {
+    if (dictionary || dictionaryError) {
+        return;
+    }
+
+    try {
+        const response = await fetch("words.txt", { cache: "no-store" });
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+
+        const text = await response.text();
+        const words = text
+            .split(/\r?\n/)
+            .map(word => word.trim().toLowerCase())
+            .filter(word => /^[a-z]+$/.test(word));
+
+        if (!words.length) {
+            throw new Error("words.txt is empty");
+        }
+
+        dictionary = new Set(words);
+        document.getElementById("results").textContent = "Dictionary ready. Results will appear here.";
+    } catch (error) {
+        dictionaryError = error;
+        document.getElementById("results").textContent =
+            "Dictionary could not be loaded. Please check that words.txt is published with the web app.";
+    }
+}
+
 // Theme toggle
 function toggleTheme() {
     document.body.dataset.theme =
         document.body.dataset.theme === "light" ? "dark" : "light";
 }
 
-// Generate r-length permutations (partial permutations, matches Python's itertools.permutations(word, r))
+// Generate r-length permutations (partial permutations, matching Python).
 function permuteR(str, r) {
-    let result = [];
+    const result = [];
+
     function helper(current, remaining) {
         if (current.length === r) {
             result.push(current);
             return;
         }
+
         for (let i = 0; i < remaining.length; i++) {
-            helper(current + remaining[i], remaining.slice(0, i) + remaining.slice(i + 1));
+            helper(
+                current + remaining[i],
+                remaining.slice(0, i) + remaining.slice(i + 1)
+            );
         }
     }
+
     helper("", str);
     return result;
 }
 
 // Render fixed inputs
 function renderFixedInputs() {
-    let count = parseInt(document.getElementById("fixedCount").value[0]);
-    let container = document.getElementById("fixedInputs");
+    const count = parseInt(document.getElementById("fixedCount").value[0]);
+    const container = document.getElementById("fixedInputs");
     container.innerHTML = "";
 
     for (let i = 0; i < count; i++) {
         container.innerHTML += `
             <div class="fixed-box">
-                <input placeholder="Letter ${i+1}" class="letter">
-                <input placeholder="Position ${i+1}" class="position" type="number">
+                <input placeholder="Letter ${i + 1}" class="letter" maxlength="1">
+                <input placeholder="Position ${i + 1}" class="position" type="number" min="1">
             </div>
         `;
     }
 }
 
 // Generate results
-function generate() {
-    let word = document.getElementById("word").value.trim();
-    let reqLen = parseInt(document.getElementById("length").value.trim());
-    let letters = [...document.getElementsByClassName("letter")];
-    let positions = [...document.getElementsByClassName("position")];
+async function generate() {
+    const resultsElement = document.getElementById("results");
+    const word = document.getElementById("word").value.trim();
+    const reqLen = parseInt(document.getElementById("length").value.trim());
+    const letters = [...document.getElementsByClassName("letter")];
+    const positions = [...document.getElementsByClassName("position")];
 
     if (!word) {
-        document.getElementById("results").textContent = "Please enter a word.";
+        resultsElement.textContent = "Please enter a word.";
         return;
     }
+
     if (!reqLen || reqLen < 1 || reqLen > word.length) {
-        document.getElementById("results").textContent =
+        resultsElement.textContent =
             `Please enter a valid length between 1 and ${word.length}.`;
         return;
     }
 
-    let fixedData = [];
-    for (let i = 0; i < letters.length; i++) {
-        let letter = letters[i].value.trim();
-        let pos = parseInt(positions[i].value.trim());
-        if (letter && pos) fixedData.push([letter, pos]);
+    await loadDictionary();
+    if (dictionaryError || !dictionary) {
+        return;
     }
 
-    let perms = permuteR(word, reqLen);
+    const fixedData = [];
+    for (let i = 0; i < letters.length; i++) {
+        const letter = letters[i].value.trim();
+        const pos = parseInt(positions[i].value.trim());
 
-    let filtered = perms.filter(p =>
-        fixedData.every(([letter, pos]) => p[pos - 1] === letter)
-    );
+        if (!letter && !positions[i].value.trim()) {
+            continue;
+        }
 
-    document.getElementById("results").textContent =
-        filtered.length ? filtered.join("\n") : "No results found.";
+        if (!letter || !Number.isInteger(pos)) {
+            resultsElement.textContent = "Each fixed letter must have a position.";
+            return;
+        }
+
+        if (letter.length !== 1) {
+            resultsElement.textContent = "Each fixed letter must contain exactly one character.";
+            return;
+        }
+
+        if (pos < 1 || pos > reqLen) {
+            resultsElement.textContent =
+                `Position ${pos} is out of range - it must be between 1 and ${reqLen}.`;
+            return;
+        }
+
+        fixedData.push([letter.toLowerCase(), pos]);
+    }
+
+    const perms = permuteR(word, reqLen);
+    const seen = new Set();
+    const filtered = [];
+
+    for (const permutation of perms) {
+        const key = permutation.toLowerCase();
+
+        if (seen.has(key)) {
+            continue;
+        }
+
+        const matchesFixed = fixedData.every(([letter, pos]) =>
+            permutation[pos - 1].toLowerCase() === letter
+        );
+
+        if (!matchesFixed || !dictionary.has(key)) {
+            continue;
+        }
+
+        seen.add(key);
+        filtered.push(permutation);
+    }
+
+    resultsElement.textContent =
+        filtered.length ? filtered.join("\n") : "No genuine words found.";
 }
 
 // Download results as TXT
+aasync = null;
 function downloadTXT() {
-    let text = document.getElementById("results").textContent;
-    let blob = new Blob([text], { type: "text/plain" });
-    let link = document.createElement("a");
+    const text = document.getElementById("results").textContent;
+    const blob = new Blob([text], { type: "text/plain" });
+    const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = "permutations.txt";
     link.click();
+    URL.revokeObjectURL(link.href);
 }
 
 renderFixedInputs();
+loadDictionary();
 </script>
 
 </body>
