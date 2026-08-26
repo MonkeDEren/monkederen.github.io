@@ -47,7 +47,7 @@ No installation needed.
 ## 🖥️ Desktop Version (Python + Kivy)
 
 ### Requirements
-- Python 3.8+
+- Python 3.10-3.11
 - Kivy
 
 ### Install dependencies
