@@ -1,3 +1,4 @@
+import os
 from itertools import permutations
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
@@ -9,12 +10,74 @@ from kivy.properties import StringProperty
 from kivy.uix.scrollview import ScrollView
 
 
+def load_dictionary():
+    """Load a set of valid English words used to filter permutations.
+
+    Tries nltk's bundled 'words' corpus first (great coverage, one-time
+    download). Falls back to a local 'words.txt' file placed next to this
+    script (one word per line) so the app can still work fully offline
+    without nltk installed, e.g. for the APK build.
+    """
+    words = set()
+
+    try:
+        import nltk
+        try:
+            from nltk.corpus import words as nltk_words
+            words = set(w.lower() for w in nltk_words.words())
+        except LookupError:
+            # Corpus not downloaded yet - try fetching it once.
+            nltk.download("words")
+            from nltk.corpus import words as nltk_words
+            words = set(w.lower() for w in nltk_words.words())
+    except ImportError:
+        pass
+
+    if not words:
+        local_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), "words.txt"
+        )
+        if os.path.exists(local_path):
+            with open(local_path, "r", encoding="utf-8") as f:
+                words = set(line.strip().lower() for line in f if line.strip())
+
+    return words
+
+
+# Loaded once at import time so every generate() call reuses it.
+DICTIONARY = load_dictionary()
+
+
 def fixed_permutations(word, req_word_len, fixed_data):
-    """fixed_data = [(letter, index), ...]"""
+    """fixed_data = [(letter, index), ...]
+
+    Returns unique, genuine-word permutations only:
+    - Duplicate letter arrangements (from repeated letters in `word`) are
+      collapsed to a single result.
+    - Each candidate must satisfy the fixed letter/position constraints.
+    - If a dictionary was loaded, each candidate must also be a real word.
+      If no dictionary could be loaded, this check is skipped (all unique,
+      constraint-matching arrangements are returned instead).
+    """
+    seen = set()
     result = []
+
     for p in permutations(word, req_word_len):
-        if all(p[idx - 1] == letter for letter, idx in fixed_data):
-            result.append("".join(p))
+        candidate = "".join(p)
+        key = candidate.lower()
+
+        if key in seen:
+            continue  # already produced this exact arrangement
+
+        if not all(p[idx - 1] == letter for letter, idx in fixed_data):
+            continue
+
+        if DICTIONARY and key not in DICTIONARY:
+            continue  # not a genuine dictionary word
+
+        seen.add(key)
+        result.append(candidate)
+
     return result
 
 
@@ -68,7 +131,12 @@ class MainWidget(BoxLayout):
                 fixed_data.append((letter, index))
 
             results = fixed_permutations(word, req_word_len, fixed_data)
-            self.output_text = "\n".join(results) if results else "No results found."
+
+            if not DICTIONARY:
+                note = "⚠ No dictionary loaded - showing unique letter arrangements (not filtered to real words).\n\n"
+                self.output_text = note + ("\n".join(results) if results else "No results found.")
+            else:
+                self.output_text = "\n".join(results) if results else "No genuine words found."
 
         except Exception as e:
             self.output_text = f"Error: {e}"
