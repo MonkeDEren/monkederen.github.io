@@ -154,7 +154,7 @@
     <button onclick="downloadTXT()">📄 Download Results as TXT</button>
 
     <h3>Results:</h3>
-    <div id="results">Results will appear here.</div>
+    <div id="results">Loading dictionary...</div>
 
     <a class="apk-btn" href="PermutationApp-1.0-release.apk">⬇️ Download Android APK</a>
 
@@ -174,6 +174,31 @@ function toggleTheme() {
     document.body.dataset.theme =
         document.body.dataset.theme === "light" ? "dark" : "light";
 }
+
+// Dictionary of real words, loaded once at page load - mirrors my_dictionary.py's
+// approach in the Python/APK version. Three states:
+//   null       -> still loading
+//   empty Set  -> load failed / file missing (generate() falls back to
+//                 unfiltered unique arrangements, same as the Kivy app does
+//                 when no dictionary is available)
+//   non-empty  -> loaded, used to filter results to genuine words
+let DICTIONARY = null;
+
+async function loadDictionary() {
+    try {
+        const response = await fetch("preloaded_words.txt");
+        if (!response.ok) throw new Error(`preloaded_words.txt returned ${response.status}`);
+        const text = await response.text();
+        DICTIONARY = new Set(
+            text.split("\n").map(w => w.trim().toLowerCase()).filter(Boolean)
+        );
+    } catch (err) {
+        console.warn("Could not load words.txt - falling back to unfiltered permutations.", err);
+        DICTIONARY = new Set();
+    }
+    document.getElementById("results").textContent = "Results will appear here.";
+}
+loadDictionary();
 
 // Generate r-length permutations (partial permutations, matches Python's itertools.permutations(word, r))
 function permuteR(str, r) {
@@ -209,36 +234,81 @@ function renderFixedInputs() {
 
 // Generate results
 function generate() {
+    let resultsEl = document.getElementById("results");
     let word = document.getElementById("word").value.trim();
     let reqLen = parseInt(document.getElementById("length").value.trim());
     let letters = [...document.getElementsByClassName("letter")];
     let positions = [...document.getElementsByClassName("position")];
 
     if (!word) {
-        document.getElementById("results").textContent = "Please enter a word.";
+        resultsEl.textContent = "Please enter a word.";
         return;
     }
     if (!reqLen || reqLen < 1 || reqLen > word.length) {
-        document.getElementById("results").textContent =
+        resultsEl.textContent =
             `Please enter a valid length between 1 and ${word.length}.`;
         return;
     }
 
+    if (DICTIONARY === null) {
+        resultsEl.textContent = "Dictionary is still loading - please try again in a moment.";
+        return;
+    }
+
+    // Validate fixed-position inputs (matches permute.py's ValueError checks:
+    // out-of-range positions are rejected instead of silently ignored)
     let fixedData = [];
     for (let i = 0; i < letters.length; i++) {
         let letter = letters[i].value.trim();
-        let pos = parseInt(positions[i].value.trim());
-        if (letter && pos) fixedData.push([letter, pos]);
+        let posText = positions[i].value.trim();
+        if (!letter && !posText) continue; // skip fully blank rows
+
+        let pos = parseInt(posText);
+
+        if (!letter || letter.length !== 1) {
+            resultsEl.textContent = `'${letter}' is not a single letter.`;
+            return;
+        }
+        if (!pos || pos < 1 || pos > reqLen) {
+            resultsEl.textContent =
+                `Position ${posText || "?"} is out of range - it must be between 1 and ${reqLen}.`;
+            return;
+        }
+        fixedData.push([letter, pos]);
     }
 
     let perms = permuteR(word, reqLen);
 
-    let filtered = perms.filter(p =>
-        fixedData.every(([letter, pos]) => p[pos - 1] === letter)
+    // Deduplicate: repeated letters in `word` produce structurally distinct
+    // but visually identical arrangements - matches permute.py's `seen` set
+    let seen = new Set();
+    let unique = [];
+    for (const p of perms) {
+        const key = p.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        unique.push(p);
+    }
+
+    let filtered = unique.filter(p =>
+        fixedData.every(([letter, pos]) => p[pos - 1].toLowerCase() === letter.toLowerCase())
     );
 
-    document.getElementById("results").textContent =
-        filtered.length ? filtered.join("\n") : "No results found.";
+    const hasDictionary = DICTIONARY.size > 0;
+    if (hasDictionary) {
+        filtered = filtered.filter(p => DICTIONARY.has(p.toLowerCase()));
+    }
+
+    if (filtered.length === 0) {
+        resultsEl.textContent = hasDictionary ? "No genuine words found." : "No results found.";
+        return;
+    }
+
+    let output = filtered.join("\n");
+    if (!hasDictionary) {
+        output = "⚠ No dictionary loaded - showing unique letter arrangements (not filtered to real words).\n\n" + output;
+    }
+    resultsEl.textContent = output;
 }
 
 // Download results as TXT
