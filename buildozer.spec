@@ -20,8 +20,6 @@ android.ndk_api = 21
 
 android.archs = arm64-v8a, armeabi-v7a
 
-android.permissions = INTERNET
-
 presplash.filename = %(source.dir)s/presplash.png
 icon.filename = %(source.dir)s/icon.png
 

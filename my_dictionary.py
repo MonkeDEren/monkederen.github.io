@@ -1,19 +1,22 @@
 import os
-import nltk
+
+
 def load_dictionary():
     """Load a set of valid English words used to filter permutations.
 
-    Tries nltk's bundled 'words' corpus first, but ONLY if it is already
-    downloaded/cached - we never trigger a network download here, since
-    that would block app startup (and fail outright on Android, which has
-    no internet access by default in this app). Falls back to a local
-    'words.txt' file placed next to this script (one word per line) so
-    the app works fully offline, which is what actually ships in the APK.
+    Tries nltk's bundled 'words' corpus first, but ONLY if nltk is
+    installed AND the corpus is already downloaded/cached - we never
+    trigger a network download here, since that would block app startup
+    (and fail outright on Android, which has no internet access by
+    default in this app, and doesn't even ship nltk in buildozer.spec's
+    requirements). Falls back to a local 'words.txt' file placed next to
+    this script (one word per line) so the app works fully offline,
+    which is what actually ships in the APK.
     """
     words = set()
 
     try:
-       
+        import nltk
         from nltk.corpus import words as nltk_words
         try:
             words = set(w.lower() for w in nltk_words.words())
@@ -23,6 +26,8 @@ def load_dictionary():
             # will be used instead.
             pass
     except ImportError:
+        # nltk isn't installed (expected on Android, where it's not in
+        # buildozer.spec's requirements) - fall through to words.txt.
         pass
 
     if not words:
