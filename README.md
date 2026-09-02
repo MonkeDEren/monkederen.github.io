@@ -25,9 +25,11 @@ A fast, intuitive tool to generate **N‑letter permutations with fixed position
 
 ## 📱 Android APK
 
-Download the latest release:
+Download the latest automated build:
 
-👉 **[Download APK](PermutationApp-1.0-release.apk)**
+👉 **[Download APK](https://github.com/monkederen/monkederen.github.io/releases/latest/download/PermutationApp-1.0-debug.apk)**
+
+This is an unsigned debug build produced automatically by GitHub Actions on every push to `main`. You'll need to allow "install from unknown sources" on your device.
 
 Compatible with Android 5.0+  
 No internet required.
@@ -53,3 +55,4 @@ No installation needed.
 ### Install dependencies
 ```bash
 pip install -r requirements.txt
+```

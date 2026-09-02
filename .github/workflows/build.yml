@@ -9,6 +9,9 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: write   # needed to publish the GitHub Release below
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -36,8 +39,27 @@ jobs:
         command: buildozer android debug
         buildozer_version: stable
 
+    - name: Rename APK to a stable filename
+      run: cp "${{ steps.buildozer.outputs.filename }}" PermutationApp-1.0-debug.apk
+
     - name: Upload APK artifact
       uses: actions/upload-artifact@v4
       with:
         name: apk
-        path: ${{ steps.buildozer.outputs.filename }}
+        path: PermutationApp-1.0-debug.apk
+
+    # Publishes/overwrites a "latest" GitHub Release with the freshly built APK
+    # attached, only on pushes to main (not on pull requests). This gives a
+    # stable, permanent public URL:
+    #   https://github.com/<owner>/<repo>/releases/latest/download/PermutationApp-1.0-debug.apk
+    - name: Publish APK to GitHub Release
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      uses: ncipollo/release-action@v1
+      with:
+        tag: latest
+        name: Latest build
+        body: Automated debug build from the latest push to main. Not signed for production release.
+        prerelease: true
+        allowUpdates: true
+        replacesArtifacts: true
+        artifacts: PermutationApp-1.0-debug.apk
